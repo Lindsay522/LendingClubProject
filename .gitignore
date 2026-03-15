@@ -1,0 +1,23 @@
+# Large data (don't push to GitHub)
+archive/loan.csv
+archive/raw_data/
+data/raw_data/
+
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.env
+
+# Outputs (optional: remove these lines if you want to commit outputs)
+# outputs/
+# plots/
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.ipynb_checkpoints/
