@@ -1,6 +1,7 @@
 # Large data (don't push to GitHub)
 archive/loan.csv
 archive/raw_data/
+archive.zip
 data/raw_data/
 
 # Python
