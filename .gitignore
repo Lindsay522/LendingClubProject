@@ -7,9 +7,6 @@ data/raw_data/
 # Node / dashboard
 node_modules/
 dashboard/node_modules/
-luna-react/node_modules/
-luna-react/dist/
-
 # Python
 __pycache__/
 *.py[cod]
