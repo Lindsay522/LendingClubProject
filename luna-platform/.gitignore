@@ -1,8 +1,0 @@
-backend/.venv/
-backend/luna.db
-backend/.env
-__pycache__/
-*.pyc
-.pytest_cache/
-.coverage
-htmlcov/

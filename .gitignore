@@ -19,6 +19,10 @@ env/
 # outputs/
 # plots/
 
+# Luna (separate repos — do not track inside this lending/data project)
+luna-platform/
+luna-app/
+
 # IDE / OS
 .idea/
 .vscode/
