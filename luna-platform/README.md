@@ -1,42 +1,46 @@
-# Luna Platform — Full-Stack AI Lifestyle System
+# Luna Platform — API for the Luna App
 
-Research-grade evolution of **Luna App**: React frontend + **FastAPI** backend + **PostgreSQL/SQLite** + **analytics (pandas)** + **rule-based / scoring recommendations** + **JWT auth**.
+**Luna Platform** is the **FastAPI** service that powers **optional cloud mode** for [Luna](https://github.com/Lindsay522/luna-app): JWT auth, user-scoped **closet & outfits**, **wellness** logs (sleep, sport, mood, calendar events, focus sessions, outfit wear), **pandas-backed analytics**, and **rule-based recommendations**.
 
-## Live architecture (high level)
+The **React client** lives in the separate repo **[Lindsay522/luna-app](https://github.com/Lindsay522/luna-app)** and talks to this API via `VITE_API_URL` (see that repo’s README).
+
+---
+
+## What reviewers should know
+
+| Piece | Role |
+|-------|------|
+| **This folder** | `backend/` — run with Uvicorn; SQLite by default |
+| **API prefix** | `/api/v1` (e.g. `/api/v1/health`, `/api/v1/docs`) |
+| **Auth** | `POST /auth/register`, `POST /auth/login` → Bearer JWT |
+| **Frontend** | Already integrated: TanStack Query + `fetch`, not axios |
+
+---
+
+## Architecture (high level)
 
 ```mermaid
-flowchart TB
-  subgraph client [Client]
-    FE[React SPA - Vite]
+flowchart LR
+  subgraph client [Browser]
+    SPA[React SPA - luna-app]
   end
-  subgraph edge [Edge]
-    CDN[Vercel / GitHub Pages]
-  end
-  subgraph api [API Layer]
-    GW[FastAPI + Uvicorn]
-    AUTH[JWT Middleware]
-    SVC[Services Layer]
+  subgraph api [Backend]
+    GW[FastAPI]
+    JWT[JWT auth]
+    SVC[SQLAlchemy + services]
   end
   subgraph data [Data]
-    DB[(PostgreSQL / SQLite)]
-    CACHE[Optional Redis later]
+    DB[(SQLite / Postgres)]
   end
-  subgraph intelligence [Intelligence]
-    AN[Analytics - pandas]
-    REC[Recommendations - rules + scores]
-    ML[Future: sklearn / embeddings]
-  end
-  FE --> CDN
-  CDN --> GW
-  GW --> AUTH
-  AUTH --> SVC
+  SPA -->|HTTPS + JSON| GW
+  GW --> JWT
+  JWT --> SVC
   SVC --> DB
-  SVC --> AN
-  SVC --> REC
-  AN --> DB
-  REC --> DB
-  REC -.-> ML
 ```
+
+More detail: [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) · Frontend wiring: [`docs/FRONTEND_INTEGRATION.md`](docs/FRONTEND_INTEGRATION.md).
+
+---
 
 ## Repository layout
 
@@ -44,66 +48,85 @@ flowchart TB
 luna-platform/
 ├── README.md                 # This file
 ├── docs/
-│   └── ARCHITECTURE.md       # Deep dive + ERD + API conventions
-├── backend/                  # FastAPI application
-│   ├── app/
-│   │   ├── main.py
-│   │   ├── config.py
-│   │   ├── database.py
-│   │   ├── models/
-│   │   ├── schemas/
-│   │   ├── api/routes/
-│   │   ├── services/        # analytics, recommendations
-│   │   └── auth/
-│   ├── requirements.txt
-│   └── .env.example
-└── frontend/                # Optional: git submodule or copy of luna-app
+│   ├── ARCHITECTURE.md
+│   ├── FRONTEND_INTEGRATION.md
+│   └── IMPLEMENTATION_PLAN.md
+└── backend/
+    ├── app/
+    │   ├── main.py           # FastAPI app + CORS + lifespan
+    │   ├── api/routes/       # auth, closet, outfits, wellness, analytics
+    │   ├── models/
+    │   ├── schemas/
+    │   ├── services/         # analytics (pandas), recommendations
+    │   └── auth/
+    ├── requirements.txt
+    └── .env.example
 ```
 
-The existing **Luna App** UI lives in sibling folder `luna-app/` (React). Wire it to this API via `VITE_API_URL`.
+---
 
-## Quick start (backend)
+## Quick start (backend only)
 
 ```bash
 cd backend
 python -m venv .venv
-.venv\Scripts\activate   # Windows
+
+# Windows
+.venv\Scripts\activate
+# macOS / Linux
+# source .venv/bin/activate
+
 pip install -r requirements.txt
-copy .env.example .env     # edit DATABASE_URL if needed
-uvicorn app.main:app --reload --port 8000
+copy .env.example .env    # Windows — edit JWT_SECRET and CORS_ORIGINS
+# cp .env.example .env    # Unix
+
+uvicorn app.main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-- API docs: http://localhost:8000/docs  
-- Health: http://localhost:8000/api/v1/health
+- **Interactive docs:** [http://127.0.0.1:8000/docs](http://127.0.0.1:8000/docs)  
+- **Health:** [http://127.0.0.1:8000/api/v1/health](http://127.0.0.1:8000/api/v1/health)
 
-## Implementation roadmap (phased)
+Default DB: **SQLite** file `./luna.db` (created on first run). Override with `DATABASE_URL` in `.env`.
 
-| Phase | Scope |
+---
+
+## Environment variables (summary)
+
+See **`backend/.env.example`** for full list. Important:
+
+| Variable | Purpose |
+|----------|---------|
+| `DATABASE_URL` | `sqlite:///./luna.db` or Postgres URL |
+| `JWT_SECRET` | **Change in production** |
+| `CORS_ORIGINS` | Comma-separated; must include your SPA origin (e.g. `http://localhost:5173`, `https://lindsay522.github.io`) |
+
+---
+
+## API surface (v1)
+
+| Area | Examples |
+|------|----------|
+| Auth | `/auth/register`, `/auth/login`, `/auth/me` |
+| Wardrobe | `GET/POST /closet`, `DELETE /closet/{id}` |
+| Outfits | `GET/POST /outfits`, `DELETE /outfits/{id}` |
+| Wellness | `POST/GET /wellness/sleep`, `sport`, `POST /wellness/mood`, `POST/GET /wellness/events`, `DELETE /wellness/events/{id}`, `POST /wellness/focus-sessions`, `POST /wellness/outfit-worn` |
+| Analytics | `GET /analytics/summary`, `GET /analytics/trends` |
+| Recommendations | `GET /recommendations/outfits`, `/focus`, `/plan` |
+
+---
+
+## Roadmap (still optional)
+
+| Phase | Ideas |
 |-------|--------|
-| **P0** | Auth, user-scoped CRUD (closet, outfits, planner, wellness), SQLite, replace localStorage |
-| **P1** | Wear logs + focus sessions + behavior events; pandas summaries; analytics API |
-| **P2** | Recommendation engine v1 (rules + weighted scores); dashboard charts in React |
-| **P3** | PostgreSQL + Alembic migrations; refresh tokens; rate limiting |
-| **P4** | Deploy: Railway/Render (API), Vercel (frontend); optional lightweight ML (scikit-learn) |
+| Done in code | Auth, CRUD, analytics, recommendations v1, SQLite |
+| Next | Alembic, Postgres in production, tests, stricter rate limits |
+| Deploy | Render / Railway (API) + set `VITE_API_URL` on the static host |
 
-Details: **docs/ARCHITECTURE.md**.
+Details: [`docs/IMPLEMENTATION_PLAN.md`](docs/IMPLEMENTATION_PLAN.md).
 
-## Frontend integration (luna-app)
+---
 
-1. `npm install axios` (or keep `fetch`).  
-2. `.env`: `VITE_API_URL=http://localhost:8000/api/v1`  
-3. Store **access_token** in `sessionStorage` (or httpOnly cookie via future BFF).  
-4. Replace `LunaProvider` localStorage calls with API hooks (`react-query` recommended).  
-5. Add **Analytics** and **Recommendations** pages consuming new endpoints.
+## License / attribution
 
-## Deployment (bonus)
-
-| Layer | Suggestion |
-|-------|------------|
-| API | [Railway](https://railway.app) or [Render](https://render.com) — connect repo `backend/`, set `DATABASE_URL` (Postgres) |
-| Web | [Vercel](https://vercel.com) — root `luna-app`, env `VITE_API_URL=https://your-api.onrender.com/api/v1` |
-| DB | Railway/Render managed Postgres |
-
-## License
-
-Your project — retain Luna / Lindsay attribution as you prefer.
+Your project — keep **Luna / Lindsay** credit in the UI as you prefer.
